@@ -31,10 +31,17 @@
                         <label for="board" class="label-style block mb-1">Name of Board</label>
                         <select id="board" name="board" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
                             <option value="">Select One</option>
-                            <option value="dhaka">Dhaka</option>
-                            <option value="comilla">Comilla</option>
+                            <option value="barisal">Barisal</option>
                             <option value="chittagong">Chittagong</option>
+                            <option value="comilla">Comilla</option>
+                            <option value="dhaka">Dhaka</option>
+                            <option value="dinajpur">Dinajpur</option>
+                            <option value="jessore">Jessore</option>
                             <option value="madrasah">Madrasah</option>
+                            <option value="mymensingh">Mymensingh</option>
+                            <option value="rajshahi">Rajshahi</option>
+                            <option value="sylhet">Sylhet</option>
+                            <option value="technical">Technical</option>
                         </select>
                     </div>
 
@@ -51,10 +58,7 @@
                         <label for="year" class="label-style block mb-1">Year of Examination</label>
                         <select id="year" name="year" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
                             <option value="">Select One</option>
-                            <option value="2025">2025</option> <option value="2024">2024</option>
-                            <option value="2023">2023</option>
-                            <option value="2022">2022</option>
-                            </select>
+                        </select>
                     </div>
                     
                     <div>
@@ -126,6 +130,28 @@
         // This variable will hold the state
         let savedCookies = null;
         let isFetchingCaptcha = false;
+
+        // --- Auto-populate year dropdown ---
+        function populateYearDropdown() {
+            const yearSelect = document.getElementById('year');
+            const currentYear = new Date().getFullYear();
+            const startYear = currentYear;
+            const endYear = currentYear - 10; // Show last 10 years
+            
+            // Clear existing options except "Select One"
+            yearSelect.innerHTML = '<option value="">Select One</option>';
+            
+            // Add years from current year down to 10 years ago
+            for (let year = startYear; year >= endYear; year--) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearSelect.appendChild(option);
+            }
+        }
+
+        // Call this function when the page loads
+        document.addEventListener('DOMContentLoaded', populateYearDropdown);
 
         // --- Data Parsing/Rendering Functions ---
         function buildSubjectMap(subDetails) {
