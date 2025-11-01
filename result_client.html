@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eboard Result Checker (Live Proxy)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f7fafc; }
+        .card { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.06); }
+        .label-style { font-weight: 600; color: #4a5568; }
+        .grade-a-plus { color: #10b981; } /* Emerald Green for A+ */
+    </style>
+</head>
+<body class="min-h-screen p-4 md:p-8 flex flex-col items-center">
+
+    <div class="w-full max-w-4xl">
+        <h1 class="text-3xl font-extrabold text-center text-gray-800 mb-6 border-b pb-2">
+            Live Eboard Result Viewer (Proxy Client)
+        </h1>
+        <p class="text-center text-sm text-red-600 mb-6">
+            **ATTENTION:** This client requires the **UPDATED `api_proxy.py`** Python script to be running on `http://127.0.0.1:5000`.
+        </p>
+
+        <div class="card bg-white p-6 rounded-lg mb-8">
+            <h2 class="text-xl font-bold mb-4 border-b pb-2">Result Submission Form</h2>
+            <form id="result-form" onsubmit="event.preventDefault(); handleFormSubmit();">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="board" class="label-style block mb-1">Name of Board</label>
+                        <select id="board" name="board" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Select One</option>
+                            <option value="dhaka">Dhaka</option>
+                            <option value="comilla">Comilla</option>
+                            <option value="chittagong">Chittagong</option>
+                            <option value="madrasah">Madrasah</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="exam" class="label-style block mb-1">Name of Examination</label>
+                        <select id="exam" name="exam" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Select One</option>
+                            <option value="hsc">HSC/Alim/Equivalent</option>
+                            <option value="ssc">SSC/Dakhil/Equivalent</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="year" class="label-style block mb-1">Year of Examination</label>
+                        <select id="year" name="year" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="">Select One</option>
+                            <option value="2025">2025</option> <option value="2024">2024</option>
+                            <option value="2023">2023</option>
+                            <option value="2022">2022</option>
+                            </select>
+                    </div>
+                    
+                    <div>
+                        <label for="result_type" class="label-style block mb-1">Type of Result</label>
+                        <select id="result_type" name="result_type" class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" required>
+                            <option value="1">Individual/Detailed Result</option>
+                        </select>
+                    </div>
+                    
+                    <div>
+                        <label for="roll" class="label-style block mb-1">Roll Number of Examinee</label>
+                        <input class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" type="number" name="roll" id="roll" value="153890" required>
+                    </div>
+                    
+                    <div>
+                        <label for="reg" class="label-style block mb-1">Registration Number of Examinee</label>
+                        <input class="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500" type="number" name="reg" id="reg" value="1234567890" required>
+                    </div>
+                </div>
+
+                <div id="captcha-section" class="hidden mt-6 p-4 border rounded-lg bg-gray-50">
+                    <label class="label-style block mb-2 text-center">Please solve the CAPTCHA</label>
+                    <div class="flex flex-col items-center">
+                        <img id="captcha-image" src="" alt="CAPTCHA" class="border rounded-md mb-3 h-16"/>
+                        <input id="captcha-input" class="w-full max-w-xs p-2 border border-gray-300 rounded-md" type="text" placeholder="Enter the digits from the image">
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button type="submit" id="submit-btn" class="w-full py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition duration-150 ease-in-out disabled:bg-gray-400">
+                        Get Live Result
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <div id="result-container" class="hidden card bg-white p-6 rounded-lg">
+            <h2 class="text-xl font-bold mb-4 text-center text-blue-600">Examination Result</h2>
+            <div id="loading" class="text-center text-lg font-semibold text-blue-500 mb-4 hidden"></div>
+            <div id="error-message" class="text-center text-lg font-semibold text-red-600 mb-4 hidden"></div>
+            <div id="result-summary" class="bg-blue-50 p-4 rounded-lg border border-blue-200 mb-6">
+                <h3 id="student-name" class="text-2xl font-extrabold text-blue-800 mb-1"></h3>
+                <p class="text-lg font-bold text-green-700 mt-2">GPA: <span id="student-gpa"></span></p>
+                <p class="text-sm text-gray-600"><span id="student-roll"></span></p>
+                <p class="text-sm text-gray-600"><span id="student-board"></span></p>
+                <p class="text-xs text-gray-500 mt-2">Institution: <span id="student-inst"></span> (<span id="student-group"></span>)</p>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 border border-gray-300">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Subject Code</th>
+                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">Subject Name</th>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Marks (Total)</th>
+                            <th class="px-6 py-3 text-center text-xs font-bold text-gray-600 uppercase tracking-wider">Grade</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subject-detail-table" class="bg-white divide-y divide-gray-200">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- MODIFIED: Configuration ---
+        const GET_CAPTCHA_URL = 'http://127.0.0.1:5000/api/get-captcha';
+        const SUBMIT_RESULT_URL = 'http://127.0.0.1:5000/api/get-result-proxy';
+        
+        // This variable will hold the state
+        let savedCookies = null;
+        let isFetchingCaptcha = false;
+
+        // --- Data Parsing/Rendering Functions ---
+        function buildSubjectMap(subDetails) {
+            const map = {};
+            if (Array.isArray(subDetails)) {
+                subDetails.forEach(detail => {
+                    if (detail.SUB_CODE) {
+                        map[detail.SUB_CODE] = detail.SUB_NAME || 'Unknown Subject';
+                    }
+                });
+            }
+            return map;
+        }
+
+        // --- *** UPDATED: Fix for Marks/Grade column *** ---
+        function parseDisplayDetails(detailsString, subjectMap) {
+            if (!detailsString || typeof detailsString !== 'string') return [];
+
+            const subjects = detailsString.split(',');
+            const resultDetails = [];
+
+            subjects.forEach(subject => {
+                // Example: 101-102:158=A
+                const parts = subject.trim().split(':');
+                if (parts.length !== 2) return;
+                
+                const [codesPart, gradeMarkPart] = parts;
+                
+                const codePair = codesPart.trim().split('-');
+                const code = codePair[0].trim();
+                const subjectName = subjectMap[code] || 'Unidentified Subject';
+
+                // --- START OF FIX ---
+                const gradeMarkSplit = gradeMarkPart.trim().split('=');
+                let finalMarks, finalGrade;
+
+                if (gradeMarkSplit.length === 2) {
+                    // Case 1: Format is "marks=grade" (e.g., "158=A+")
+                    finalMarks = gradeMarkSplit[0].trim() || '--';
+                    finalGrade = gradeMarkSplit[1].trim() || 'N/A';
+                } else {
+                    // Case 2: Format is just "grade" (e.g., "A+")
+                    finalMarks = '--'; // No marks provided
+                    finalGrade = gradeMarkSplit[0].trim() || 'N/A';
+                }
+                // --- END OF FIX ---
+                
+                resultDetails.push({
+                    code: codesPart.trim(),
+                    name: subjectName,
+                    marks: finalMarks,
+                    grade: finalGrade,
+                });
+            });
+
+            return resultDetails;
+        }
+
+        // --- *** UPDATED: Fix for GPA parsing *** ---
+        function renderResult(data) {
+            try {
+                const res = data.res;
+                
+                // --- START OF NEW GPA FIX ---
+                let gpa = 'N/A';
+                
+                // First, check if res.gpa exists
+                if (res.gpa) {
+                    gpa = res.gpa;
+                } 
+                // If not, check res_detail for the "GPA=..." format
+                else if (res.res_detail) {
+                    // This regex now correctly looks for text after "GPA="
+                    const gpaMatch = res.res_detail.match(/GPA=(.*)/); 
+                    if (gpaMatch && gpaMatch[1]) {
+                        gpa = gpaMatch[1]; // This will capture "5.00"
+                    }
+                }
+                // --- END OF NEW GPA FIX ---
+
+                // 2. Update Summary Card
+                const nameEl = document.getElementById('student-name');
+                const gpaEl = document.getElementById('student-gpa');
+                const instEl = document.getElementById('student-inst');
+                const groupEl = document.getElementById('student-group');
+                const rollEl = document.getElementById('student-roll');
+                const boardEl = document.getElementById('student-board');
+                
+                if(nameEl) nameEl.textContent = res.name || 'N/A';
+                if(gpaEl) gpaEl.textContent = gpa; // Use the new 'gpa' variable
+                if(instEl) instEl.textContent = res.inst_name || 'N/A';
+                if(groupEl) groupEl.textContent = res.stud_group || 'N/A';
+                if(rollEl) rollEl.textContent = `Roll: ${res.roll_no || 'N/A'}`;
+                if(boardEl) boardEl.textContent = `Board: ${res.board_name || 'N/A'}`;
+
+
+                // 3. Build Subject Map and Parse Details
+                const subjectMap = buildSubjectMap(data.sub_details);
+                // The 'display_details' from your JSON ("101:A+") confirms the 
+                // fix for parseDisplayDetails is correct.
+                const details = parseDisplayDetails(res.display_details, subjectMap);
+                
+                // 4. Render Subject Detail Table
+                const tableBody = document.getElementById('subject-detail-table');
+                tableBody.innerHTML = ''; // Clear existing rows
+
+                details.forEach(item => {
+                    const row = tableBody.insertRow();
+                    row.className = 'hover:bg-gray-50 transition duration-150';
+                    const gradeClass = item.grade === 'A+' ? 'grade-a-plus' : 'text-gray-900';
+                    
+                    row.innerHTML = `
+                        <td class="px-6 py-4 text-left text-sm font-medium text-gray-900">${item.code}</td>
+                        <td class="px-6 py-4 text-left text-sm text-gray-700">${item.name}</td>
+                        <td class="px-6 py-4 text-center text-sm font-bold text-gray-900">${item.marks}</td>
+                        <td class="px-6 py-4 text-center text-sm font-bold ${gradeClass}">${item.grade}</td>
+                    `;
+                });
+
+                document.getElementById('result-container').classList.remove('hidden');
+                document.getElementById('error-message').classList.add('hidden');
+                document.getElementById('result-summary').classList.remove('hidden');
+
+            } catch (e) {
+                console.error("Error rendering result:", e);
+                document.getElementById('error-message').textContent = `Error processing result data: ${e.message}.`;
+                document.getElementById('error-message').classList.remove('hidden');
+                document.getElementById('result-container').classList.remove('hidden');
+                document.getElementById('result-summary').classList.add('hidden');
+                document.getElementById('subject-detail-table').innerHTML = '';
+            }
+        }
+
+
+        // --- MODIFIED: Live Fetch Function ---
+
+        function setupUiForLoading() {
+            document.getElementById('submit-btn').disabled = true;
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('error-message').classList.add('hidden');
+            document.getElementById('result-container').classList.add('hidden');
+            document.getElementById('result-summary').classList.remove('hidden');
+            document.getElementById('subject-detail-table').innerHTML = '';
+        }
+
+        function resetUi(errorMessage = null) {
+            document.getElementById('submit-btn').disabled = false;
+            document.getElementById('loading').classList.add('hidden');
+            
+            // Reset CAPTCHA
+            savedCookies = null;
+            document.getElementById('captcha-section').classList.add('hidden');
+            document.getElementById('captcha-input').value = '';
+            document.getElementById('captcha-image').src = '';
+            document.getElementById('submit-btn').textContent = 'Get Live Result';
+
+            if (errorMessage) {
+                const errorEl = document.getElementById('error-message');
+                errorEl.textContent = errorMessage;
+                errorEl.classList.remove('hidden');
+                document.getElementById('result-container').classList.remove('hidden');
+                document.getElementById('result-summary').classList.add('hidden');
+            }
+        }
+
+        async function handleFormSubmit() {
+            if (isFetchingCaptcha) return; // Prevent double clicks
+
+            const form = document.getElementById('result-form');
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            data.submit = 'View Result';
+            
+            setupUiForLoading();
+
+            try {
+                // --- STEP 1: Get CAPTCHA or Submit Result ---
+                if (savedCookies === null) {
+                    // We don't have cookies, so fetch the CAPTCHA first
+                    isFetchingCaptcha = true;
+                    document.getElementById('loading').textContent = 'Fetching CAPTCHA...';
+                    
+                    const response = await fetch(GET_CAPTCHA_URL);
+                    if (!response.ok) throw new Error(`Failed to fetch CAPTCHA (Status: ${response.status}). Is proxy running?`);
+
+                    const captchaData = await response.json();
+                    if (captchaData.status !== 0) throw new Error(`API Error: ${captchaData.msg}`);
+
+                    // Save cookies and show CAPTCHA
+                    savedCookies = captchaData.cookies;
+                    document.getElementById('captcha-image').src = 'data:image/png;base64,' + captchaData.image_b64;
+                    document.getElementById('captcha-section').classList.remove('hidden');
+                    document.getElementById('submit-btn').textContent = 'Submit Result with CAPTCHA';
+                    document.getElementById('submit-btn').disabled = false;
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('captcha-input').focus();
+
+                } else {
+                    // We HAVE cookies, so this is the final submission
+                    document.getElementById('loading').textContent = 'Submitting result...';
+
+                    // Add CAPTCHA solution and cookies to the payload
+                    data.captcha = document.getElementById('captcha-input').value;
+                    data.cookies = savedCookies;
+
+                    if (!data.captcha) {
+                        throw new Error("Please enter the CAPTCHA solution.");
+                    }
+
+                    const response = await fetch(SUBMIT_RESULT_URL, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data), 
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}. Check Python console.`);
+                    }
+
+                    const resultJson = await response.json();
+
+                    if (resultJson.status === 0 && resultJson.msg === 'Success' && resultJson.res) {
+                        renderResult(resultJson);
+                        resetUi(); // Success, reset form
+                    } else {
+                        // API Error (e.g., CAPTCHA failed, Roll not found)
+                        // Reset UI but show the error
+                        throw new Error(`API Error: ${resultJson.msg || 'Result not found or invalid input.'}`);
+                    }
+                }
+            } catch (e) {
+                console.error("Fetch failed:", e);
+                // Reset the whole form on any error
+                resetUi(`Error: ${e.message}. Please try again.`);
+            } finally {
+                isFetchingCaptcha = false;
+            }
+        }
+        
+    </script>
+</body>
+</html>
